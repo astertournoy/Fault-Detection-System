@@ -10,12 +10,12 @@ from picamera2 import Picamera2  # Import Raspberry Pi camera library
 # Initialize the Raspberry Pi cameras
 picam1 = Picamera2(0)  # Left camera (Raspberry Pi)
 picam2 = Picamera2(1)  # Right camera (Raspberry Pi)
-nozzle_camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Nozzle camera (USB)
+nozzle_camera = cv2.VideoCapture("/dev/video16")  # Nozzle camera (USB)
 
 # Directories for saving images
-image_directory_left = 'E:\\THESIS_ASTER_DATA\\SYSTEM\\left'
-image_directory_right = 'E:\\THESIS_ASTER_DATA\\SYSTEM\\right'
-image_directory_nozzle = 'E:\\THESIS_ASTER_DATA\\SYSTEM\\nozzle'
+image_directory_left = '/media/atournoy/Expansion/test/left'
+image_directory_right = '/media/atournoy/Expansion/test/right'
+image_directory_nozzle = '/media/atournoy/Expansion/test/nozzle'
 
 # Create directories if they do not exist
 os.makedirs(image_directory_left, exist_ok=True)
@@ -358,6 +358,9 @@ def conclusion (L_ans, R_ans, N_ans):
 
 
 # -------- MAIN FUNCTIONS --------
+left_image = None
+right_image = None
+
 def capture_and_classify_images():
     global crop_set, results_left, results_right, results_nozzle
     i = 0  # Image counter
@@ -376,11 +379,14 @@ def capture_and_classify_images():
         photo_path_nozzle = os.path.join(image_directory_nozzle, photo_name_nozzle)
 
         # Capture images from Raspberry Pi cameras
-        left_image = picam1.capture_array()
-        right_image = picam2.capture_array()
+        picam1.start_and_capture_file(photo_path_left, preview_mode=None, capture_mode='still', show_preview=False)
+        left_image = cv2.imread(photo_path_left)
+        picam2.start_and_capture_file(photo_path_right, preview_mode=None, capture_mode='still', show_preview=False)
+        right_image = cv2.imread(photo_path_right)
         ret_nozzle, frame_nozzle = nozzle_camera.read()
 
         if left_image is not None and right_image is not None and ret_nozzle:
+
             cv2.imwrite(photo_path_left, left_image)
             cv2.imwrite(photo_path_right, right_image)
             cv2.imwrite(photo_path_nozzle, frame_nozzle)
