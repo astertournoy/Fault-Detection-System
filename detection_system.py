@@ -40,13 +40,13 @@ Ng = 0
 # Global variables for cropping (side cameras)
 is_dragging = False
 # Add separate crop box variables for left and right cameras
-left_box_x, left_box_y, left_crop_w, left_crop_h = 0, 0, 250, 250
-right_box_x, right_box_y, right_crop_w, right_crop_h = 0, 0, 250, 250
+left_box_x, left_box_y, left_crop_w, left_crop_h = 0, 0, 1600, 1000
+right_box_x, right_box_y, right_crop_w, right_crop_h = 0, 0, 1600, 1000
 display_scale = 1  # Scale factor for displaying the image
 crop_set = False  # Flag to track if cropping has been set
 
 # Define the fixed crop values for nozzle camera
-crop_x, crop_y, crop_w_nozzle, crop_h_nozzle = 200, 160, 440, 320
+crop_x, crop_y, crop_w_nozzle, crop_h_nozzle = 145, 135, 440, 320
 
 
 def sanitize_filename(filename):
@@ -114,6 +114,7 @@ def crop_side_image(img_path, camera_name, is_left_camera):
                 cv2.imwrite(img_path, cropped_img)
                 break
         cv2.destroyAllWindows()
+        # -----
 
 def apply_crop(img_path, is_left_camera):
     global left_box_x, left_box_y, left_crop_w, left_crop_h
@@ -280,8 +281,12 @@ def conclusion (L_ans, R_ans, N_ans):
 
     #when all three answers are the same
     if N_ans == L_ans and L_ans == R_ans:
-        T_ans = N_ans
-        print('CONCLUSION: ', T_ans)
+        if N_ans in ['none']:
+            T_ans = N_ans
+            print('CONCLUSION: ', T_ans)
+        else:
+            T_ans = N_ans
+            print('CONCLUSION: ', T_ans[1])
 
 
     #when all of the answers are either good or unclear
@@ -292,62 +297,65 @@ def conclusion (L_ans, R_ans, N_ans):
     #when only one of the cameras shows an error
     elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
         T_ans = N_ans
-        print('CONCLUSION: ', T_ans)
+        print('CONCLUSION: ', T_ans[1])
 
     elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
         T_ans = L_ans
-        print('CONCLUSION: ', T_ans)
+        print('CONCLUSION: ', T_ans[1])
 
     elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
         T_ans = R_ans
-        print('CONCLUSION: ', T_ans)
+        print('CONCLUSION: ', T_ans[1])
 
     #when two cameras show errors
     #nozzle is good others show error
     elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
         if L_ans == R_ans:
             T_ans = L_ans
-            print('CONCLUSION: ', T_ans)
+            print('CONCLUSION: ', T_ans[1])
 
         else:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', R_ans)
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', R_ans[1])
      
     #right camera is good, others show error
     elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
         if L_ans == N_ans:
             T_ans = L_ans
-            print('CONCLUSION: ', T_ans)
+            print('CONCLUSION: ', T_ans[1])
 
         else:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', N_ans)
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', N_ans[1])
 
 
     #left camera is good, others show error
     elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
         if R_ans == N_ans:
             T_ans = R_ans
-            print('CONCLUSION: ', T_ans)
+            print('CONCLUSION: ', T_ans[1])
 
         else:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', R_ans, ' AND ', N_ans)
+            print('CONCLUSION MULTIPLE ERRORS: ', R_ans[1], ' AND ', N_ans[1])
 
 
     #when all three show erros
     elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
         if N_ans == L_ans:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', R_ans, ' AND ', N_ans)
+            print('CONCLUSION MULTIPLE ERRORS: ', R_ans[1], ' AND ', N_ans[1])
 
         elif N_ans == R_ans:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', N_ans)
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', N_ans[1])
 
         elif L_ans == R_ans:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', N_ans)
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', N_ans[1])
+
+    if T_ans != 'none' and T_ans != 'Multiple Errors':
+        T_ans = T_ans[1]
 
     return T_ans
 
@@ -381,8 +389,10 @@ def capture_and_classify_images():
         # Capture images from Raspberry Pi cameras
         picam1.start_and_capture_file(photo_path_left, preview_mode=None, capture_mode='still', show_preview=False)
         left_image = cv2.imread(photo_path_left)
+        left_image = cv2.flip(left_image, 0)
         picam2.start_and_capture_file(photo_path_right, preview_mode=None, capture_mode='still', show_preview=False)
         right_image = cv2.imread(photo_path_right)
+        right_image = cv2.flip(right_image, 0)
         ret_nozzle, frame_nozzle = nozzle_camera.read()
 
         if left_image is not None and right_image is not None and ret_nozzle:
