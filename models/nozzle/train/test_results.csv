@@ -1,0 +1,4 @@
+Metric,Value
+metrics/accuracy_top1,0.9910714030265808
+metrics/accuracy_top5,1.0
+fitness,0.9955357015132904
