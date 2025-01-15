@@ -2,6 +2,7 @@ import time
 import os
 from datetime import datetime
 import cv2
+import csv
 import re
 from ultralytics import YOLO  # Import YOLO for classification
 from picamera2 import Picamera2  # Import Raspberry Pi camera library
@@ -138,8 +139,14 @@ def check_consecutive(lst, error_type, count):
 #function of the logic
 def answers(results_left, results_right, results_nozzle):
     L_pred = results_left[-1]
+    L_pred = L_pred[-1]
     R_pred = results_right[-1]
+    R_pred = R_pred[-1]
     N_pred = results_nozzle[-1]
+    print("N PREDICTION HEREEE", N_pred)
+    N_pred = N_pred[-1]
+    print("predictions: ", L_pred, R_pred, N_pred)
+
     L_ans = "none"
     R_ans = "none"
     N_ans = "none"
@@ -150,39 +157,37 @@ def answers(results_left, results_right, results_nozzle):
 
 
     # in case the model returns 'good', 'unclear' or 'not printing'
-    if L_pred in ['1_Good', '14_Unclear', '15_Not_Printing']:
+    if L_pred == '01_Good' or L_pred == '14_Unclear' or L_pred == '15_Not_Printing':
         L_ans = L_pred
-        if L_pred == '1_Good':
-            results_left.remove('1_Good')
+        if L_pred == '01_Good':
+            results_left = results_left[:-1]
             Lg += 1
         if L_pred == '14_Unclear':
-            results_left.remove('14_Unclear')
+            results_left = results_left[:-1]
         if L_pred == '15_Not_Printing':
-            results_left.remove('15_Not_Printing')
+            results_left = results_left[:-1]
             L_ans = "none"
 
-    if R_pred in ['1_Good', '14_Unclear', '15_Not_Printing']:
+    if R_pred in ['01_Good', '14_Unclear', '15_Not_Printing']:
         R_ans = R_pred
-        if R_pred == '1_Good':
-            results_right.remove('1_Good')
+        if R_pred == '01_Good':
+            results_right = results_right[:-1]
             Rg += 1
         if R_pred == '14_Unclear':
-            results_right.remove('14_Unclear')
+            results_right = results_right[:-1]
         if R_pred == '15_Not_Printing':
-            results_right.remove('15_Not_Printing')
+            results_right = results_right[:-1]
             R_ans = "none"
 
-    if N_pred in ['1_Good', '14_Unclear', '15_Not_Printing']:
+    if N_pred in ['01_Good', '14_Unclear', '15_Not_Printing']:
         N_ans = N_pred
-        if N_pred == '1_Good':
-            results_nozzle.remove('1_Good')
+        if N_pred == '01_Good':
+            results_nozzle = results_nozzle[:-1]
             Ng += 1
-            N_pred = results_nozzle[-1]
         if N_pred == '14_Unclear':
-            results_nozzle.remove('14_Unclear')
-            N_pred = results_nozzle[-1]
+            results_nozzle = results_nozzle[:-1]
         if N_pred == '15_Not_Printing':
-            results_nozzle.remove('15_Not_Printing')
+            results_nozzle = results_nozzle[:-1]
             N_ans = "none"
 
     #when good appear 4x, the list is emptied
@@ -259,19 +264,36 @@ def answers(results_left, results_right, results_nozzle):
 
 
     #overhang sag, bridging, delamination and OE
-    if (L_ans in ['09_Poor_Bridging', '10_Overhang_Sag', '13_Delamination']) and (N_ans not in ['1_Good', '14_Unclear', '15_Not_Printing']):
+    if (L_ans in ['09_Poor_Bridging', '10_Overhang_Sag', '13_Delamination']) and (N_ans not in ['01_Good', '14_Unclear', '15_Not_Printing']):
         N_ans = 'none'
 
-    if (R_ans in ['09_Poor_Bridging', '10_Overhang_Sag', '13_Delamination']) and (N_ans not in ['1_Good', '14_Unclear', '15_Not_Printing']):
+    if (R_ans in ['09_Poor_Bridging', '10_Overhang_Sag', '13_Delamination']) and (N_ans not in ['01_Good', '14_Unclear', '15_Not_Printing']):
         N_ans = 'none'
 
-    if (N_ans == '02_Over_Extrusion' or N_ans == '03_Under_Extrusion') and (L_ans not in ['1_Good', '14_Unclear', '15_Not_Printing']):
+    if (N_ans == '02_Over_Extrusion' or N_ans == '03_Under_Extrusion') and (L_ans not in ['01_Good', '14_Unclear', '15_Not_Printing']):
         L_ans = 'none'
 
-    if (N_ans == '02_Over_Extrusion' or N_ans == '03_Under_Extrusion') and (R_ans not in ['1_Good', '14_Unclear', '15_Not_Printing']):
+    if (N_ans == '02_Over_Extrusion' or N_ans == '03_Under_Extrusion') and (R_ans not in ['01_Good', '14_Unclear', '15_Not_Printing']):
         R_ans = 'none'
 
     return(L_ans, R_ans, N_ans)
+
+def update_results_csv(T_ans):
+    # Path to the CSV file
+    csv_file = "results.csv"
+    
+    # Check if the CSV file already exists. If not, create it and add headers
+    file_exists = os.path.isfile(csv_file)
+
+    with open(csv_file, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        
+        # If the file doesn't exist, add a header row
+        if not file_exists:
+            writer.writerow(["Conclusion"])  # You can add more columns if needed
+        
+        # Append the current T_ans to the file
+        writer.writerow([T_ans])
 
 # integrate three camera outputs into one conclusion
 def conclusion (L_ans, R_ans, N_ans):
@@ -286,76 +308,77 @@ def conclusion (L_ans, R_ans, N_ans):
             print('CONCLUSION: ', T_ans)
         else:
             T_ans = N_ans
-            print('CONCLUSION: ', T_ans[1])
+            print('CONCLUSION: ', T_ans)
 
 
     #when all of the answers are either good or unclear
-    elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
-        T_ans = '1_Good'
+    elif N_ans in ['01_Good', '14_Unclear', 'none'] and L_ans in ['01_Good', '14_Unclear', 'none'] and R_ans in ['01_Good', '14_Unclear', 'none']:
+        T_ans = '01_Good'
         print('CONCLUSION: ', T_ans)
 
     #when only one of the cameras shows an error
-    elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans not in ['01_Good', '14_Unclear', 'none'] and L_ans in ['01_Good', '14_Unclear', 'none'] and R_ans in ['01_Good', '14_Unclear', 'none']:
         T_ans = N_ans
-        print('CONCLUSION: ', T_ans[1])
+        print('CONCLUSION: ', T_ans)
 
-    elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans in ['01_Good', '14_Unclear', 'none'] and L_ans not in ['01_Good', '14_Unclear', 'none'] and R_ans in ['01_Good', '14_Unclear', 'none']:
         T_ans = L_ans
-        print('CONCLUSION: ', T_ans[1])
+        print('CONCLUSION: ', T_ans)
 
-    elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans in ['01_Good', '14_Unclear', 'none'] and L_ans in ['01_Good', '14_Unclear', 'none'] and R_ans not in ['01_Good', '14_Unclear', 'none']:
         T_ans = R_ans
-        print('CONCLUSION: ', T_ans[1])
+        print('CONCLUSION: ', T_ans)
 
     #when two cameras show errors
     #nozzle is good others show error
-    elif N_ans in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans in ['01_Good', '14_Unclear', 'none'] and L_ans not in ['01_Good', '14_Unclear', 'none'] and R_ans not in ['01_Good', '14_Unclear', 'none']:
         if L_ans == R_ans:
             T_ans = L_ans
-            print('CONCLUSION: ', T_ans[1])
+            print('CONCLUSION: ', T_ans)
 
         else:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', R_ans[1])
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', R_ans)
      
     #right camera is good, others show error
-    elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans not in ['01_Good', '14_Unclear', 'none'] and L_ans not in ['01_Good', '14_Unclear', 'none'] and R_ans in ['01_Good', '14_Unclear', 'none']:
         if L_ans == N_ans:
             T_ans = L_ans
-            print('CONCLUSION: ', T_ans[1])
+            print('CONCLUSION: ', T_ans)
 
         else:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', N_ans[1])
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', N_ans)
 
 
     #left camera is good, others show error
-    elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans not in ['01_Good', '14_Unclear', 'none'] and L_ans in ['01_Good', '14_Unclear', 'none'] and R_ans not in ['01_Good', '14_Unclear', 'none']:
         if R_ans == N_ans:
             T_ans = R_ans
-            print('CONCLUSION: ', T_ans[1])
+            print('CONCLUSION: ', T_ans)
 
         else:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', R_ans[1], ' AND ', N_ans[1])
+            print('CONCLUSION MULTIPLE ERRORS: ', R_ans, ' AND ', N_ans)
 
 
     #when all three show erros
-    elif N_ans not in ['1_Good', '14_Unclear', 'none'] and L_ans not in ['1_Good', '14_Unclear', 'none'] and R_ans not in ['1_Good', '14_Unclear', 'none']:
+    elif N_ans not in ['01_Good', '14_Unclear', 'none'] and L_ans not in ['01_Good', '14_Unclear', 'none'] and R_ans not in ['01_Good', '14_Unclear', 'none']:
         if N_ans == L_ans:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', R_ans[1], ' AND ', N_ans[1])
+            print('CONCLUSION MULTIPLE ERRORS: ', R_ans, ' AND ', N_ans)
 
         elif N_ans == R_ans:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', N_ans[1])
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', N_ans)
 
         elif L_ans == R_ans:
             T_ans = 'Multiple Errors'
-            print('CONCLUSION MULTIPLE ERRORS: ', L_ans[1], ' AND ', N_ans[1])
+            print('CONCLUSION MULTIPLE ERRORS: ', L_ans, ' AND ', N_ans)
 
-    if T_ans != 'none' and T_ans != 'Multiple Errors':
-        T_ans = T_ans[1]
+
+
+    update_results_csv(T_ans)
 
     return T_ans
 
