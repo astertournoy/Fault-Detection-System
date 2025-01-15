@@ -143,7 +143,6 @@ def answers(results_left, results_right, results_nozzle):
     R_pred = results_right[-1]
     R_pred = R_pred[-1]
     N_pred = results_nozzle[-1]
-    print("N PREDICTION HEREEE", N_pred)
     N_pred = N_pred[-1]
     print("predictions: ", L_pred, R_pred, N_pred)
 
